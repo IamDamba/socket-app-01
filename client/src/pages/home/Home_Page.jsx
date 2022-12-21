@@ -8,22 +8,30 @@ import axios from "axios";
 // ||||||||||||||||||||||||||||| Home_Page Component ||||||||||||||||||||||||||||||||||||
 
 const Home_Page = () => {
-  // Hooks
+  //#region  Values Region
+  // State
   const [message, setMessage] = useState("");
   const [conversations, setConversations] = useState([]);
   const [currentConv, setCurrentConv] = useState(null);
   const [messages_list, setMessages_List] = useState([]);
+  const [arrival_Messages_list, setArrivalMessages_List] = useState([]);
 
+  // Ref
   const socket = useRef(null);
   const bottomRef = useRef(null);
 
   // Reducer
   const { user_id } = useSelector((state) => state.auth);
+  //#endregion
 
-  //Functions
+  //#region Functions Region
   const getAllConversations = async () => {
-    await axios.get(`/api/conversations/all/${user_id}`).then((res) => {
+    await axios.get(`/api/conversations/all/${user_id}`).then(async (res) => {
       setConversations(res.data);
+
+      await axios.get(`/api/arrival_messages/${user_id}`).then((res) => {
+        setArrivalMessages_List(res.data.all_arr_msg);
+      });
     });
   };
   const getOneConversation = async (conv_id) => {
@@ -34,10 +42,45 @@ const Home_Page = () => {
         fk_users_id_2: res.data.fk_users_id_2,
       });
       setMessages_List(res.data.messages);
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+
+      if (arrival_Messages_list.length) {
+        DeleteArrivalMessages(conv_id);
+      }
     });
   };
-
+  const AddArrivalMessages = async (data) => {
+    console.log(data);
+    await axios
+      .post("/api/arrival_messages", {
+        sender_id: data.arrival_msg.senderID,
+        conv_id: data.arrival_msg.convID,
+        msg: data.arrival_msg.text,
+      })
+      .then(() => {
+        setArrivalMessages_List((e) => [
+          ...e,
+          {
+            fk_users_id: data.arrival_msg.senderID,
+            fk_conversations_id: data.arrival_msg.convID,
+            msg: data.arrival_msg.text,
+            created_at: data.arrival_msg.created_at,
+          },
+        ]);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  };
+  const DeleteArrivalMessages = async (conv_id) => {
+    await axios
+      .delete(`/api/arrival_messages/${user_id}/${conv_id}`)
+      .then((res) => {
+        setArrivalMessages_List(res.data.arrival_messages);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  };
   const handleSubmit = async () => {
     if (!message.length) {
       alert("erreur: msg vide");
@@ -83,20 +126,14 @@ const Home_Page = () => {
         });
     }
   };
+  //#endregion
 
-  // UseEffect
+  //#region  UseEffect
   useEffect(() => {
     socket.current = io("ws://localhost:3001", { transports: ["websocket"] });
-    socket.current.on("get_message", (data) => {
-      setMessages_List((e) => [
-        ...e,
-        {
-          fk_users_id: data.senderID,
-          fk_conversations_id: data.convID,
-          msg: data.text,
-          created_at: data.created_at,
-        },
-      ]);
+
+    socket.current?.on("get_message", (data) => {
+      AddArrivalMessages(data);
     });
   }, []);
 
@@ -110,8 +147,26 @@ const Home_Page = () => {
 
   useEffect(() => {
     getAllConversations();
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [currentConv]);
+
+  useEffect(() => {
+    if (currentConv) {
+      let new_msg_list = arrival_Messages_list.filter(
+        (arr_msg) => arr_msg.fk_conversations_id == currentConv.id
+      );
+      if (new_msg_list.length) {
+        new_msg_list.map((data) => {
+          setMessages_List((e) => [...e, data]);
+        });
+        DeleteArrivalMessages(currentConv.id);
+      }
+    }
+  }, [arrival_Messages_list]);
+  //#endregion
 
   // Return
   return (
@@ -130,7 +185,13 @@ const Home_Page = () => {
           {conversations.map((conv, key) => (
             <li key={key}>
               <button
-                className="bg-white py-3 px-6 w-full font-medium focus:bg-slate-300"
+                className={`${
+                  arrival_Messages_list.filter(
+                    (arr_msg) => arr_msg.fk_conversations_id == conv.id
+                  ).length
+                    ? "bg-blue-200"
+                    : "bg-white"
+                } py-3 px-6 w-full font-medium focus:bg-slate-300`}
                 onClick={() => getOneConversation(conv.id)}
               >
                 {conv.conversation_name}
@@ -140,62 +201,66 @@ const Home_Page = () => {
         </ul>
       </section>
       <section className="second flex-1 relative">
-        <div className="msg-box flex flex-col h-[100vh] overflow-y-scroll">
-          <div className="top flex-1 flex flex-col space-y-8 px-8 pt-16 pb-16">
-            {messages_list.length ? (
-              messages_list.map((msg, key) => (
-                <div
-                  key={key}
-                  className={
-                    msg.fk_users_id == user_id
-                      ? `right flex flex-col self-end`
-                      : `left`
-                  }
-                >
+        {currentConv ? (
+          <div className="msg-box flex flex-col h-[100vh] overflow-y-scroll">
+            <div className="top flex-1 flex flex-col space-y-8 px-8 pt-16 pb-16">
+              {messages_list.length ? (
+                messages_list.map((msg, key) => (
                   <div
-                    className={`content inline-block px-3 py-2 rounded-full ${
+                    key={key}
+                    className={
                       msg.fk_users_id == user_id
-                        ? "bg-gray-300"
-                        : "bg-orange-400"
-                    }`}
+                        ? `right flex flex-col self-end`
+                        : `left`
+                    }
                   >
-                    <p className="w-fit">{msg.msg}</p>
+                    <div
+                      className={`content inline-block px-3 py-2 rounded-full ${
+                        msg.fk_users_id == user_id
+                          ? "bg-gray-300"
+                          : "bg-orange-400"
+                      }`}
+                    >
+                      <p className="w-fit">{msg.msg}</p>
+                    </div>
+                    <div className="date">
+                      <p className="text-sm font-medium">{`${new Date(
+                        msg.created_at
+                      ).toLocaleDateString()}-${new Date(
+                        msg.created_at
+                      ).toLocaleTimeString()}`}</p>
+                    </div>
                   </div>
-                  <div className="date">
-                    <p className="text-sm font-medium">{`${new Date(
-                      msg.created_at
-                    ).toLocaleDateString()}-${new Date(
-                      msg.created_at
-                    ).toLocaleTimeString()}`}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p>Aucun message n'à été trouvé</p>
-            )}
-          </div>
-          <div className="scroll-bottom" ref={bottomRef}></div>
-          <div className="bot flex items-center sticky bottom-0 left-0">
-            <div className="input w-full">
-              <input
-                type="text"
-                name=""
-                id=""
-                className="w-full py-3 px-6"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
+                ))
+              ) : (
+                <p>Aucun message n'à été trouvé</p>
+              )}
             </div>
-            <div className="btn ">
-              <button
-                className="py-3 px-10 bg-orange-400 font-medium"
-                onClick={handleSubmit}
-              >
-                Send
-              </button>
+            <div className="scroll-bottom" ref={bottomRef}></div>
+            <div className="bot flex items-center sticky bottom-0 left-0">
+              <div className="input w-full">
+                <input
+                  type="text"
+                  name=""
+                  id=""
+                  className="w-full py-3 px-6"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+              </div>
+              <div className="btn ">
+                <button
+                  className="py-3 px-10 bg-orange-400 font-medium"
+                  onClick={handleSubmit}
+                >
+                  Send
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div></div>
+        )}
       </section>
     </main>
   );
