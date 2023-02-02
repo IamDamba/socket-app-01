@@ -11,6 +11,8 @@ const Home_Page = () => {
   //#region  Values Region
   // State
   const [message, setMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [allUsers, setAllUsers] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [currentConv, setCurrentConv] = useState(null);
   const [messages_list, setMessages_List] = useState([]);
@@ -81,6 +83,19 @@ const Home_Page = () => {
         console.log(err);
       });
   };
+
+  const delayDebounceFn = () => {
+    setTimeout(async () => {
+      // Send Axios request here
+      await axios
+        .get(`/api/users/${user_id}?username=${searchTerm}`)
+        .then((val) => {
+          setAllUsers(val.data);
+        })
+        .catch((err) => console.log(err));
+    }, 3000);
+  };
+
   const handleSubmit = async () => {
     if (!message.length) {
       alert("erreur: msg vide");
@@ -126,6 +141,31 @@ const Home_Page = () => {
         });
     }
   };
+  const handleNewConversation = async (fk_users_id_2) => {
+    let verifyConv = conversations.filter(
+      (conv) =>
+        (conv.fk_users_id_1 == fk_users_id_2 &&
+          conv.fk_users_id_2 == user_id) ||
+        (conv.fk_users_id_1 == user_id && conv.fk_users_id_2 == fk_users_id_2)
+    );
+
+    if (!verifyConv.length) {
+      console.log("here");
+      await axios
+        .post("/api/conversations", {
+          fk_user_id: fk_users_id_2,
+          user_id: user_id,
+        })
+        .then(() => {
+          getAllConversations();
+          setAllUsers([]);
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    }
+  };
+
   //#endregion
 
   //#region  UseEffect
@@ -166,20 +206,42 @@ const Home_Page = () => {
       }
     }
   }, [arrival_Messages_list]);
+  useEffect(() => {
+    if (searchTerm.length >= 3) {
+      delayDebounceFn();
+    } else {
+      setAllUsers([]);
+    }
+  }, [searchTerm]);
   //#endregion
 
   // Return
   return (
     <main className="home flex">
       <section className="first w-[300px] h-[100vh] space-y-8 border-r-2 border-black">
-        <div className="search w-full ">
+        <div className="search w-full relative">
           <input
             type="search"
-            name=""
-            id=""
             placeholder="Search for friends"
             className="w-full py-2 px-6"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
+          <div
+            className={`absolute top-10 left-0 w-full bg-red-500 ${
+              allUsers.length ? "block" : "hidden"
+            }`}
+          >
+            {allUsers.map((user, key) => (
+              <button
+                className="w-full py-6 px-6"
+                key={key}
+                onClick={() => handleNewConversation(user.id)}
+              >
+                {user.username}
+              </button>
+            ))}
+          </div>
         </div>
         <ul>
           {conversations.map((conv, key) => (
