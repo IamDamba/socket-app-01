@@ -49,7 +49,21 @@ const ConversationCTRL = {
       return res.status(500).json({ msg: `Error 500: ${err.message} ` });
     }
   },
-  delete: async () => {
+  add: async (req, res) => {
+    try {
+      const { fk_user_id, user_id } = req.body;
+
+      await Conversations.create({
+        fk_users_id_1: user_id,
+        fk_users_id_2: fk_user_id,
+      }).then(() => {
+        return res.status(200).json({ msg: `Success: Conv à bien ete créer ` });
+      });
+    } catch (err) {
+      return res.status(500).json({ msg: `Error 500: ${err.message} ` });
+    }
+  },
+  delete: async (req, res) => {
     try {
       const { user_id, conv_id } = req.body;
 

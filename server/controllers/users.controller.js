@@ -12,6 +12,20 @@ const UserCTRL = {
       return res.status(500).json({ msg: `Error 500: ${err.message} ` });
     }
   },
+  by_search: async (req, res) => {
+    try {
+      const { user_id } = req.params;
+      const { username } = req.query;
+
+      await Users.findAll({
+        where: { username: { [Op.iRegexp]: username }, id: { [Op.ne]: user_id } },
+      }).then((users) => {
+        return res.json(users);
+      });
+    } catch (err) {
+      return res.status(500).json({ msg: `Error 500: ${err.message} ` });
+    }
+  },
   one: async (req, res) => {
     try {
       const { email, pwd } = req.body;

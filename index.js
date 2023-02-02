@@ -10,9 +10,12 @@ const { Server } = require("socket.io");
 const db = require("./server/config/db.config");
 const { InitSocket } = require("./server/config/socket.config");
 const { db_assoc } = require("./server/utils/sequelize_assocs");
+
 const UserRouter = require("./server/routes/users.route");
 const MessageRouter = require("./server/routes/messages.route");
+const ArrivalMessageRouter = require("./server/routes/arrival_messages.route");
 const ConversationRouter = require("./server/routes/conversations.route");
+const NotifRouter = require("./server/routes/notifications.route");
 
 const port = process.env.PORT || 3001;
 const app = express();
@@ -32,7 +35,9 @@ app.use(express.json());
 
 app.use("/api/users", UserRouter);
 app.use("/api/messages", MessageRouter);
+app.use("/api/arrival_messages", ArrivalMessageRouter);
 app.use("/api/conversations", ConversationRouter);
+app.use("/api/notifications", NotifRouter);
 
 // ------ Listen ------
 

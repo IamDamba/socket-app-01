@@ -2,8 +2,9 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 let users = [];
+let arrival_messages = [];
 
-//Users
+// #region Users Functions
 const AddUsers = (userID, socketID) => {
   !users.some((user) => user.userID === userID) &&
     users.push({ userID, socketID });
@@ -14,7 +15,7 @@ const RemoveUsers = (socketID) => {
 const GetUser = (userID) => {
   return users.find((user) => user.userID == userID);
 };
-
+// #endregion
 
 //Init Socket
 const InitSocket = (io) => {
@@ -27,16 +28,17 @@ const InitSocket = (io) => {
       cb(users);
     });
 
-    // Send and Get messages
     socket.on(
       "send_message",
       ({ senderID, receiverID, text, created_at, convID }) => {
         const user = GetUser(receiverID);
-        console.log(user);
         io.to(user.socketID).emit("get_message", {
-          senderID,
-          text,
-          created_at,
+          arrival_msg: {
+            senderID,
+            text,
+            created_at,
+            convID,
+          },
           convID,
         });
       }
