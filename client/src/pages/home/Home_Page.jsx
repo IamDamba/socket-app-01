@@ -159,6 +159,7 @@ const Home_Page = () => {
         .then(() => {
           getAllConversations();
           setAllUsers([]);
+          location.reload();
         })
         .catch((err) => {
           console.log(err);

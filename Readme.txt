@@ -1,0 +1,9 @@
+- Allez dans pg admin
+- Creer la bdd socket-app-01 en interne
+- Ouvrez une query et copier/coller le contenue du query.txt dans la racine du dossier sur la query pgadmin
+- Lancer le projet (vous avez deux utilisateurs le premier: "test1@test.email" et le deuxieme: "test2@test.email", ces users ont le meme mot de passe: "123456");
+- Rechercher le nom utilisateur ("testeur1" ou "testeur2")
+- Cliquez sur son nom 
+- Engagez une conversation
+- Ouvrez une nouvelle fenetre en navigation privée et connectez vous ou deuxieme Compte 
+- Ouvrez la conversation et c'est Good !
